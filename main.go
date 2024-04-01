@@ -5,6 +5,7 @@ import (
 	"log"
 	"net"
 	"net/http"
+	"net/url"
 	"strconv"
 	"time"
 )
@@ -48,7 +49,20 @@ func main() {
 	go hub.run()
 	http.HandleFunc("/", serveHome)
 	http.HandleFunc("/public", func(w http.ResponseWriter, r *http.Request) {
-		serveWs(hub, w, r)
+		u, err := url.Parse(r.URL.String())
+		if err != nil {
+			fmt.Println("Error parsing URL:", err)
+			return
+		}
+
+		// Extract the 'id' query parameter
+		username := u.Query().Get("username")
+		if username == "" {
+			fmt.Println("Username parameter is missing")
+			return
+		}
+
+		serveWs(hub, w, r, username)
 	})
 	server := &http.Server{
 		Addr:              ip + ":" + port,
@@ -58,7 +72,6 @@ func main() {
 	if err != nil {
 		log.Fatal("ListenAndServe: ", err)
 	}
-
 }
 
 func getInput(value *string) {

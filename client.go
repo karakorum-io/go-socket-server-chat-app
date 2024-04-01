@@ -27,9 +27,10 @@ var upgrader = websocket.Upgrader{
 }
 
 type Client struct {
-	hub  *Hub
-	conn *websocket.Conn
-	send chan []byte
+	username string
+	hub      *Hub
+	conn     *websocket.Conn
+	send     chan []byte
 }
 
 func (c *Client) readPump() {
@@ -55,7 +56,9 @@ func (c *Client) readPump() {
 		}
 
 		message = bytes.TrimSpace(bytes.Replace(message, newline, space, -1))
-		c.hub.broadcast <- message
+		// c.hub.broadcast <- message
+		identifiedMessage := append([]byte(c.username+" : "), message...)
+		c.hub.broadcast <- identifiedMessage
 	}
 }
 
@@ -100,13 +103,13 @@ func (c *Client) writePump() {
 	}
 }
 
-func serveWs(hub *Hub, w http.ResponseWriter, r *http.Request) {
+func serveWs(hub *Hub, w http.ResponseWriter, r *http.Request, username string) {
 	conn, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
 		log.Println(err)
 		return
 	}
-	client := &Client{hub: hub, conn: conn, send: make(chan []byte, 256)}
+	client := &Client{username: username, hub: hub, conn: conn, send: make(chan []byte, 256)}
 	client.hub.register <- client
 
 	go client.writePump()
