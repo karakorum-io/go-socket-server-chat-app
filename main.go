@@ -1,13 +1,15 @@
 package main
 
 import (
-	"flag"
+	"fmt"
 	"log"
+	"net"
 	"net/http"
+	"strconv"
 	"time"
 )
 
-var addr = flag.String("addr", "192.168.1.7:0666", "http service address")
+var ip, port string
 
 func serveHome(w http.ResponseWriter, r *http.Request) {
 	log.Println(r.URL)
@@ -25,19 +27,52 @@ func serveHome(w http.ResponseWriter, r *http.Request) {
 }
 
 func main() {
-	flag.Parse()
+
+	fmt.Println("Server IP: ")
+	getInput(&ip)
+
+	if !isValidIP(ip) {
+		log.Fatal("Invalid IP!")
+	}
+
+	fmt.Println("Server PORT: ")
+	getInput(&port)
+
+	if !isValidPort(port) {
+		log.Fatal("Invalid Port!")
+	}
+
+	log.Println("Starting server @ " + ip + ":" + port)
+
 	hub := newHub()
 	go hub.run()
 	http.HandleFunc("/", serveHome)
-	http.HandleFunc("/ws", func(w http.ResponseWriter, r *http.Request) {
+	http.HandleFunc("/public", func(w http.ResponseWriter, r *http.Request) {
 		serveWs(hub, w, r)
 	})
 	server := &http.Server{
-		Addr:              *addr,
+		Addr:              ip + ":" + port,
 		ReadHeaderTimeout: 3 * time.Second,
 	}
 	err := server.ListenAndServe()
 	if err != nil {
 		log.Fatal("ListenAndServe: ", err)
 	}
+
+}
+
+func getInput(value *string) {
+	fmt.Scan(value)
+}
+
+func isValidIP(ipStr string) bool {
+	return net.ParseIP(ipStr) != nil
+}
+
+func isValidPort(portStr string) bool {
+	port, err := strconv.Atoi(portStr)
+	if err != nil {
+		return false // not a number
+	}
+	return port > 0 && port <= 65535
 }
